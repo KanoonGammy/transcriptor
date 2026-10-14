@@ -1015,7 +1015,13 @@ async function testApiKey() {
     resDiv.classList.remove("hidden");
     if (res.valid) {
       resDiv.className = "p-3 rounded-xl text-xs bg-emerald-50 text-emerald-800 border border-emerald-200";
-      resDiv.innerHTML = `✅ เชื่อมต่อ ElevenLabs สำเร็จ!<br/>แพ็กเกจ (Tier): <b>${res.tier}</b> | อักขระที่ใช้ไป: ${res.character_count.toLocaleString()} / ${res.character_limit.toLocaleString()}`;
+      let detailText = "";
+      if (res.character_limit > 0) {
+        detailText = `<br/>แพ็กเกจ (Tier): <b>${res.tier}</b> | โควต้าอักขระ: ${res.character_count.toLocaleString()} / ${res.character_limit.toLocaleString()}`;
+      } else if (res.note) {
+        detailText = `<br/><span class="text-emerald-700">${res.note}</span>`;
+      }
+      resDiv.innerHTML = `✅ เชื่อมต่อ ElevenLabs สำเร็จ!${detailText}`;
       showToast("ElevenLabs API Key ใช้งานได้ถูกต้อง", "success");
     } else {
       resDiv.className = "p-3 rounded-xl text-xs bg-rose-50 text-rose-800 border border-rose-200";

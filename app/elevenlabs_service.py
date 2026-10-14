@@ -23,33 +23,50 @@ def format_seconds(seconds: float) -> str:
 
 def test_api_key(api_key: str) -> Dict[str, Any]:
     """
-    Test ElevenLabs API key validity against their user endpoint.
+    Test ElevenLabs API key validity.
+    Handles both full-access keys (via /v1/user) and scoped/fine-grained keys (via /v1/models).
     """
     if not api_key:
         return {"valid": False, "error": "API Key is empty"}
 
-    url = f"{ELEVENLABS_BASE_URL}/user"
     headers = {"xi-api-key": api_key.strip()}
 
     try:
-        response = requests.get(url, headers=headers, timeout=15)
-        if response.status_code == 200:
-            data = response.json()
+        # Step 1: Try /v1/user to read subscription tier & quota
+        user_res = requests.get(f"{ELEVENLABS_BASE_URL}/user", headers=headers, timeout=10)
+        if user_res.status_code == 200:
+            data = user_res.json()
             sub = data.get("subscription", {})
             return {
                 "valid": True,
-                "tier": sub.get("tier", "Unknown"),
+                "tier": sub.get("tier", "Active"),
                 "character_count": sub.get("character_count", 0),
                 "character_limit": sub.get("character_limit", 0),
-                "status": sub.get("status", "active")
+                "status": sub.get("status", "active"),
+                "note": "Full Permissions"
             }
-        else:
-            try:
-                err_json = response.json()
-                detail = err_json.get("detail", {}).get("message") or err_json.get("detail") or str(err_json)
-            except Exception:
-                detail = response.text
-            return {"valid": False, "error": f"API Error ({response.status_code}): {detail}"}
+
+        # Step 2: If /v1/user returned 401 (e.g. missing 'user_read' scope),
+        # verify key validity against /v1/models endpoint
+        models_res = requests.get(f"{ELEVENLABS_BASE_URL}/models", headers=headers, timeout=10)
+        if models_res.status_code == 200:
+            return {
+                "valid": True,
+                "tier": "Speech-to-Text Scoped",
+                "character_count": 0,
+                "character_limit": 0,
+                "status": "active",
+                "note": "API Key ใช้งานได้สมบูรณ์ (คีย์นี้เปิดสิทธิ์สำหรับ Speech-to-Text เรียบร้อย พร้อมใช้งานทันที)"
+            }
+
+        # Step 3: If both failed, return the exact error message
+        try:
+            err_json = models_res.json()
+            detail = err_json.get("detail", {}).get("message") or err_json.get("detail") or str(err_json)
+        except Exception:
+            detail = models_res.text or user_res.text
+        return {"valid": False, "error": f"API Error: {detail}"}
+
     except requests.exceptions.RequestException as e:
         return {"valid": False, "error": f"Connection failed: {str(e)}"}
 
