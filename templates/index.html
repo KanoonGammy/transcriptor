@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="th" class="h-full bg-slate-50">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Transcriptor Pro - ระบบถอดเสียงด้วย AI (ElevenLabs Scribe)</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              200: '#c7d2fe',
+              300: '#a5b4fc',
+              400: '#818cf8',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              800: '#3730a3',
+              900: '#312e81',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="h-full text-slate-800 antialiased flex flex-col">
+
+  <!-- ==========================================
+       LOGIN VIEW (Show when unauthenticated)
+       ========================================== -->
+  <div id="view-login" class="min-h-full flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 hidden">
+    <div class="max-w-md w-full space-y-8 bg-white/95 backdrop-blur p-8 sm:p-10 rounded-2xl shadow-2xl border border-slate-200/50">
+      <div class="text-center">
+        <div class="mx-auto h-16 w-16 bg-brand-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-brand-500/30">
+          <i data-lucide="mic" class="w-8 h-8"></i>
+        </div>
+        <h2 class="mt-4 text-3xl font-extrabold text-slate-900 tracking-tight">Transcriptor Pro</h2>
+        <p class="mt-2 text-sm text-slate-500">ระบบถอดเสียงอัจฉริยะ (ElevenLabs Scribe)<br/>เฉพาะผู้ใช้ที่ได้รับการสร้างสิทธิ์จากแอดมินเท่านั้น</p>
+      </div>
+
+      <form id="form-login" class="mt-8 space-y-5">
+        <div>
+          <label for="login-username" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">ชื่อผู้ใช้ (Username)</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+              <i data-lucide="user" class="w-4 h-4"></i>
+            </span>
+            <input id="login-username" name="username" type="text" required autofocus
+              class="block w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 text-sm shadow-sm transition"
+              placeholder="ระบุ username">
+          </div>
+        </div>
+
+        <div>
+          <label for="login-password" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">รหัสผ่าน (Password)</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+              <i data-lucide="lock" class="w-4 h-4"></i>
+            </span>
+            <input id="login-password" name="password" type="password" required
+              class="block w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 text-sm shadow-sm transition"
+              placeholder="••••••••">
+          </div>
+        </div>
+
+        <div id="login-error" class="hidden text-sm text-rose-600 bg-rose-50 p-3 rounded-xl border border-rose-200"></div>
+
+        <div>
+          <button type="submit" id="btn-login-submit"
+            class="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-xl shadow-md text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 transition">
+            <i data-lucide="log-in" class="w-4 h-4"></i>
+            <span>เข้าสู่ระบบ</span>
+          </button>
+        </div>
+
+        <div class="text-center pt-2">
+          <p class="text-xs text-slate-400">
+            ระบบไม่มีการเปิดรับสมัครทั่วไป ติดต่อ Admin เพื่อขอเปิดบัญชีใช้งาน
+          </p>
+        </div>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- ==========================================
+       MAIN APP LAYOUT (Show when authenticated)
+       ========================================== -->
+  <div id="view-app" class="flex-1 flex overflow-hidden hidden">
+
+    <!-- SIDEBAR -->
+    <aside class="w-64 bg-slate-900 border-r border-slate-800 flex flex-col flex-shrink-0 select-none">
+      <!-- App Brand Header -->
+      <div class="p-5 flex items-center gap-3 border-b border-slate-800">
+        <div class="h-10 w-10 bg-brand-600 rounded-xl flex items-center justify-center text-white shadow-md shadow-brand-500/20">
+          <i data-lucide="mic-2" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <h1 class="text-base font-bold text-white tracking-tight leading-none" id="brand-system-name">Transcriptor</h1>
+          <span class="text-[10px] font-medium tracking-wide uppercase px-1.5 py-0.5 mt-1 inline-block bg-brand-900/80 text-brand-300 rounded border border-brand-700/50">ElevenLabs AI</span>
+        </div>
+      </div>
+
+      <!-- Navigation Menu -->
+      <nav class="flex-1 px-3 py-4 space-y-1.5 overflow-y-auto">
+        <button onclick="navigateTab('new')" id="nav-btn-new"
+          class="nav-item w-full flex items-center gap-3 px-3.5 py-2.5 text-sm font-medium rounded-xl text-white bg-brand-600 transition shadow-sm">
+          <i data-lucide="plus-circle" class="w-4 h-4"></i>
+          <span>ถอดเสียงใหม่</span>
+        </button>
+
+        <button onclick="navigateTab('library')" id="nav-btn-library"
+          class="nav-item w-full flex items-center gap-3 px-3.5 py-2.5 text-sm font-medium rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/80 transition">
+          <i data-lucide="folder-archive" class="w-4 h-4"></i>
+          <span>คลังบทถอดเสียง</span>
+        </button>
+
+        <!-- Admin Only Menu Section -->
+        <div class="pt-4 pb-1 admin-only hidden">
+          <p class="px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">ส่วนผู้ดูแลระบบ</p>
+        </div>
+
+        <button onclick="navigateTab('logs')" id="nav-btn-logs"
+          class="nav-item admin-only hidden w-full flex items-center gap-3 px-3.5 py-2.5 text-sm font-medium rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/80 transition">
+          <i data-lucide="activity" class="w-4 h-4"></i>
+          <span>บันทึกกิจกรรม (Logs)</span>
+        </button>
+
+        <button onclick="navigateTab('users')" id="nav-btn-users"
+          class="nav-item admin-only hidden w-full flex items-center gap-3 px-3.5 py-2.5 text-sm font-medium rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/80 transition">
+          <i data-lucide="users" class="w-4 h-4"></i>
+          <span>จัดการผู้ใช้งาน</span>
+        </button>
+
+        <button onclick="navigateTab('settings')" id="nav-btn-settings"
+          class="nav-item admin-only hidden w-full flex items-center gap-3 px-3.5 py-2.5 text-sm font-medium rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/80 transition">
+          <i data-lucide="settings" class="w-4 h-4"></i>
+          <span>ตั้งค่าระบบ & พื้นที่</span>
+        </button>
+      </nav>
+
+      <!-- User Profile & Logout Bottom Bar -->
+      <div class="p-3 border-t border-slate-800 bg-slate-950/40">
+        <div class="flex items-center justify-between p-2 rounded-xl bg-slate-900 border border-slate-800/80">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-white text-xs font-bold" id="user-avatar">
+              U
+            </div>
+            <div class="min-w-0">
+              <p class="text-xs font-semibold text-white truncate" id="user-display-name">Username</p>
+              <span class="text-[10px] px-1.5 py-0.2 rounded font-medium" id="user-role-badge">User</span>
+            </div>
+          </div>
+          <button onclick="logout()" title="ออกจากระบบ" class="text-slate-400 hover:text-rose-400 p-1.5 rounded-lg hover:bg-slate-800 transition">
+            <i data-lucide="log-out" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="flex-1 flex flex-col min-w-0 overflow-y-auto bg-slate-100">
+
+      <!-- ==========================================
+           TAB 1: NEW TRANSCRIPTION
+           ========================================== -->
+      <section id="tab-new" class="tab-pane p-6 lg:p-8 max-w-5xl mx-auto w-full space-y-6">
+        <div>
+          <h2 class="text-2xl font-bold text-slate-900 tracking-tight">ถอดเสียงจากไฟล์เสียงหรือวิดีโอ</h2>
+          <p class="text-sm text-slate-500 mt-1">อัปโหลดไฟล์เพื่อถอดข้อความอัตโนมัติด้วย AI พร้อมระบุผู้พูดและบันทึกเวลาแม่นยำ</p>
+        </div>
+
+        <!-- API Key Missing Warning Banner -->
+        <div id="banner-api-key-warning" class="hidden p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 flex items-start gap-3 shadow-sm">
+          <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5"></i>
+          <div class="text-sm">
+            <p class="font-semibold">ยังไม่ได้ตั้งค่า ElevenLabs API Key</p>
+            <p class="text-amber-700 mt-0.5">กรุณาแจ้งผู้ดูแลระบบ หรือไปที่หน้า <b>ตั้งค่าระบบ (Settings)</b> เพื่อใส่ ElevenLabs API Key ก่อนเริ่มถอดเสียง</p>
+          </div>
+        </div>
+
+        <form id="form-upload" class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-6 lg:p-8 space-y-6">
+          <!-- Dropzone Area -->
+          <div>
+            <label class="block text-sm font-semibold text-slate-800 mb-2">เลือกไฟล์เสียงหรือวิดีโอ</label>
+            <div id="dropzone"
+              class="border-2 border-dashed border-slate-300 hover:border-brand-500 rounded-2xl p-8 text-center cursor-pointer transition bg-slate-50/60 hover:bg-brand-50/20">
+              <input type="file" id="file-input" name="file" accept="audio/*,video/*,.mp3,.wav,.m4a,.mp4,.ogg,.webm,.flac,.aac" class="hidden">
+              <div id="dropzone-empty" class="space-y-3">
+                <div class="mx-auto w-14 h-14 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center">
+                  <i data-lucide="upload-cloud" class="w-7 h-7"></i>
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-slate-700">ลากไฟล์มาวางที่นี่ หรือ <span class="text-brand-600 font-semibold underline">คลิกเพื่อเลือกไฟล์</span></p>
+                  <p class="text-xs text-slate-400 mt-1">รองรับ MP3, WAV, M4A, MP4, WebM, OGG, FLAC, AAC</p>
+                </div>
+              </div>
+              
+              <!-- Selected File Info -->
+              <div id="dropzone-file-info" class="hidden flex items-center justify-between p-4 bg-white rounded-xl border border-brand-200 shadow-sm">
+                <div class="flex items-center gap-3 min-w-0">
+                  <div class="w-10 h-10 rounded-xl bg-brand-600 text-white flex items-center justify-center flex-shrink-0">
+                    <i data-lucide="file-audio" class="w-5 h-5"></i>
+                  </div>
+                  <div class="text-left min-w-0">
+                    <p class="text-sm font-bold text-slate-800 truncate" id="selected-file-name">filename.mp3</p>
+                    <p class="text-xs text-slate-500" id="selected-file-size">0.0 MB</p>
+                  </div>
+                </div>
+                <button type="button" onclick="clearSelectedFile(event)" class="text-slate-400 hover:text-rose-600 p-2 rounded-lg hover:bg-slate-100 transition">
+                  <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Configuration Fields -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
+            <div>
+              <label for="task-title" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">ชื่อหัวข้อเอกสาร (ไม่บังคับ)</label>
+              <input type="text" id="task-title" name="title"
+                placeholder="เช่น การประชุมวางแผนโปรเจกต์ Q4"
+                class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 shadow-sm">
+            </div>
+
+            <div>
+              <label for="task-language" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">ภาษาที่พูดในคลิป</label>
+              <select id="task-language" name="language_code"
+                class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 shadow-sm bg-white">
+                <option value="tha" selected>ภาษาไทย (Thai)</option>
+                <option value="auto">ตรวจจับภาษาอัตโนมัติ (Auto Detect)</option>
+                <option value="eng">English (อังกฤษ)</option>
+                <option value="cmn">Mandarin Chinese (จีนกลาง)</option>
+                <option value="jpn">Japanese (ญี่ปุ่น)</option>
+              </select>
+            </div>
+
+            <div>
+              <label for="task-model" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">โมเดล AI (ElevenLabs Scribe)</label>
+              <select id="task-model" name="model_id"
+                class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 shadow-sm bg-white">
+                <option value="scribe_v1" selected>Scribe v1 (แนะนำ - แม่นยำสูง)</option>
+                <option value="scribe_v2">Scribe v2 (เวอร์ชันใหม่ล่าสุด)</option>
+              </select>
+            </div>
+
+            <div>
+              <label for="task-num-speakers" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">จำนวนผู้พูดโดยประมาณ (ไม่บังคับ)</label>
+              <input type="number" id="task-num-speakers" name="num_speakers" min="1" max="20" placeholder="ปล่อยว่างเพื่อให้ AI ประเมินเอง"
+                class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 shadow-sm">
+            </div>
+          </div>
+
+          <!-- Speaker Diarization Switch -->
+          <div class="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200">
+            <div class="flex items-center gap-3">
+              <div class="p-2 bg-brand-100 text-brand-700 rounded-lg">
+                <i data-lucide="users" class="w-5 h-5"></i>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-slate-800">แยกผู้พูดตามเสียง (Speaker Diarization)</p>
+                <p class="text-xs text-slate-500">ระบุว่าใครเป็นคนพูดในแต่ละประโยค (เช่น ผู้พูด 1, ผู้พูด 2) พร้อมบันทึกช่วงเวลา</p>
+              </div>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="task-diarize" name="diarize" checked class="sr-only peer">
+              <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-600"></div>
+            </label>
+          </div>
+
+          <!-- Submit Button -->
+          <div class="pt-2">
+            <button type="submit" id="btn-submit-transcribe"
+              class="w-full flex items-center justify-center gap-2.5 py-3.5 px-6 rounded-xl text-sm font-bold text-white bg-brand-600 hover:bg-brand-700 active:scale-[0.99] shadow-md shadow-brand-500/25 transition disabled:opacity-50 disabled:cursor-not-allowed">
+              <i data-lucide="sparkles" class="w-5 h-5"></i>
+              <span>เริ่มถอดเสียงด้วย ElevenLabs AI</span>
+            </button>
+          </div>
+        </form>
+      </section>
+
+
+      <!-- ==========================================
+           TAB 2: LIBRARY / TRANSCRIPTS HISTORY
+           ========================================== -->
+      <section id="tab-library" class="tab-pane p-6 lg:p-8 max-w-6xl mx-auto w-full space-y-6 hidden">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 class="text-2xl font-bold text-slate-900 tracking-tight">คลังบทถอดเสียง (Transcripts)</h2>
+            <p class="text-sm text-slate-500 mt-1">รายการไฟล์เสียงที่ถอดความเสร็จแล้วและที่กำลังประมวลผล</p>
+          </div>
+          <button onclick="loadTranscriptions()" class="self-start sm:self-auto flex items-center gap-2 px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-700 shadow-sm transition">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+            <span>รีเฟรชข้อมูล</span>
+          </button>
+        </div>
+
+        <!-- Filter & Search Toolbar -->
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200/80 flex flex-col md:flex-row gap-3 items-center justify-between">
+          <div class="relative w-full md:w-96">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+              <i data-lucide="search" class="w-4 h-4"></i>
+            </span>
+            <input type="text" id="lib-search" oninput="filterTranscriptions()"
+              placeholder="ค้นหาชื่อไฟล์ หรือหัวข้อ..."
+              class="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-brand-500">
+          </div>
+
+          <div class="flex items-center gap-2 w-full md:w-auto">
+            <span class="text-xs text-slate-500">สถานะ:</span>
+            <select id="lib-status-filter" onchange="filterTranscriptions()"
+              class="px-3 py-2 border border-slate-300 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
+              <option value="">ทั้งหมด</option>
+              <option value="completed">เสร็จสมบูรณ์</option>
+              <option value="processing">กำลังถอดเสียง</option>
+              <option value="queued">รอดำเนินการ</option>
+              <option value="failed">ข้อผิดพลาด</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Transcriptions List Container -->
+        <div id="transcriptions-container" class="space-y-3">
+          <!-- Populated by app.js -->
+        </div>
+      </section>
+
+
+      <!-- ==========================================
+           TAB 3: DETAIL & INTERACTIVE VIEWER
+           ========================================== -->
+      <section id="tab-detail" class="tab-pane p-6 lg:p-8 max-w-6xl mx-auto w-full space-y-6 hidden">
+        <!-- Back Navigation & Action Bar -->
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <button onclick="navigateTab('library')" class="flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-900 transition">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+            <span>กลับไปคลังบทถอดเสียง</span>
+          </button>
+
+          <!-- Export Download Buttons -->
+          <div class="flex flex-wrap items-center gap-2">
+            <button onclick="downloadCurrent('docx')"
+              class="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition">
+              <i data-lucide="file-text" class="w-4 h-4"></i>
+              <span>Word (.docx)</span>
+            </button>
+            <button onclick="downloadCurrent('pdf')"
+              class="flex items-center gap-1.5 px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-sm transition">
+              <i data-lucide="file-check-2" class="w-4 h-4"></i>
+              <span>PDF (.pdf)</span>
+            </button>
+            <button onclick="downloadCurrent('txt')"
+              class="flex items-center gap-1.5 px-3.5 py-2 bg-slate-700 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-sm transition">
+              <i data-lucide="file-code" class="w-4 h-4"></i>
+              <span>Text (.txt)</span>
+            </button>
+            <button onclick="copyCurrentTranscript()"
+              class="flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 rounded-xl text-xs font-semibold shadow-sm transition">
+              <i data-lucide="copy" class="w-4 h-4"></i>
+              <span>คัดลอก</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Detail Header Card -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200/80 space-y-4">
+          <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div>
+              <h2 class="text-2xl font-bold text-slate-900" id="detail-title">Title</h2>
+              <div class="flex flex-wrap items-center gap-3 mt-2 text-xs text-slate-500">
+                <span class="flex items-center gap-1"><i data-lucide="file" class="w-3.5 h-3.5"></i> <span id="detail-filename">-</span></span>
+                <span>•</span>
+                <span class="flex items-center gap-1"><i data-lucide="clock" class="w-3.5 h-3.5"></i> <span id="detail-duration">00:00</span></span>
+                <span>•</span>
+                <span class="flex items-center gap-1"><i data-lucide="globe" class="w-3.5 h-3.5"></i> <span id="detail-language">TH</span></span>
+                <span>•</span>
+                <span class="flex items-center gap-1"><i data-lucide="cpu" class="w-3.5 h-3.5"></i> <span id="detail-model">scribe_v1</span></span>
+              </div>
+            </div>
+            <div id="detail-status-badge"></div>
+          </div>
+
+          <!-- Sticky Audio Player Container -->
+          <div id="audio-player-container" class="bg-slate-900 text-white p-4 rounded-xl flex flex-col md:flex-row items-center gap-4 shadow-md">
+            <div class="flex items-center gap-3">
+              <button id="player-play-btn" onclick="toggleAudioPlay()"
+                class="w-10 h-10 rounded-full bg-brand-600 hover:bg-brand-500 flex items-center justify-center text-white transition flex-shrink-0">
+                <i data-lucide="play" class="w-5 h-5 ml-0.5"></i>
+              </button>
+              <div class="text-xs font-mono text-slate-300 w-24">
+                <span id="player-cur-time">00:00</span> / <span id="player-total-time">00:00</span>
+              </div>
+            </div>
+
+            <!-- Scrub Slider -->
+            <div class="flex-1 w-full">
+              <input type="range" id="player-seek" min="0" max="100" value="0" step="0.1"
+                class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-brand-500">
+            </div>
+
+            <!-- Controls: Speed -->
+            <div class="flex items-center gap-3 flex-shrink-0">
+              <select id="player-speed" onchange="changeAudioSpeed(this.value)"
+                class="bg-slate-800 text-white text-xs border border-slate-700 rounded-lg px-2 py-1 focus:outline-none">
+                <option value="0.75">0.75x</option>
+                <option value="1.0" selected>1.0x</option>
+                <option value="1.25">1.25x</option>
+                <option value="1.5">1.5x</option>
+                <option value="2.0">2.0x</option>
+              </select>
+            </div>
+
+            <audio id="html5-audio" preload="metadata" class="hidden"></audio>
+          </div>
+
+          <div id="audio-purged-warning" class="hidden text-xs text-amber-700 bg-amber-50 p-2.5 rounded-lg border border-amber-200">
+            ℹ️ ไฟล์เสียงต้นฉบับถูกลบออกจากเซิร์ฟเวอร์ตามนโยบายจัดเก็บข้อมูลแล้ว เพื่อประหยัดพื้นที่ดิสก์ (บทถอดความยังคงอยู่ครบถ้วน)
+          </div>
+
+          <!-- Speaker Rename Accordion -->
+          <div class="border border-slate-200 rounded-xl overflow-hidden bg-slate-50/50">
+            <button onclick="toggleSpeakerPanel()" class="w-full px-4 py-3 text-left flex items-center justify-between font-semibold text-xs text-slate-700 hover:bg-slate-100 transition">
+              <span class="flex items-center gap-2"><i data-lucide="user-check" class="w-4 h-4 text-brand-600"></i> ปรับแต่งชื่อผู้พูดในบทสนทนา (Custom Speaker Names)</span>
+              <i data-lucide="chevron-down" id="speaker-panel-icon" class="w-4 h-4 text-slate-400"></i>
+            </button>
+            <div id="speaker-panel-body" class="p-4 border-t border-slate-200 bg-white space-y-3 hidden">
+              <p class="text-xs text-slate-500">เปลี่ยนชื่อผู้พูดได้ตามต้องการ เมื่อบันทึก เอกสาร Word, PDF และ Text จะอัปเดตเป็นชื่อใหม่อัตโนมัติ</p>
+              <div id="speaker-inputs-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                <!-- Inputs injected via JS -->
+              </div>
+              <div class="text-right">
+                <button onclick="saveSpeakerNames()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition">
+                  บันทึกชื่อผู้พูด
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dialogue Segments View -->
+        <div class="space-y-3" id="dialogue-container">
+          <!-- Dialogue boxes injected via JS -->
+        </div>
+      </section>
+
+
+      <!-- ==========================================
+           TAB 4: ACTIVITY LOGS (Admin Only)
+           ========================================== -->
+      <section id="tab-logs" class="tab-pane p-6 lg:p-8 max-w-6xl mx-auto w-full space-y-6 hidden">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 class="text-2xl font-bold text-slate-900 tracking-tight">บันทึกกิจกรรมในเซิร์ฟเวอร์ (Activity Logs)</h2>
+            <p class="text-sm text-slate-500 mt-1">Audit Trail ตรวจสอบว่าใครเข้าสู่ระบบ, อัปโหลด, ถอดเสียง, ดาวน์โหลด หรือแก้ไขข้อมูลใดบ้าง</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="exportLogsCsv()" class="flex items-center gap-2 px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-700 shadow-sm transition">
+              <i data-lucide="download" class="w-3.5 h-3.5"></i>
+              <span>ส่งออก CSV</span>
+            </button>
+            <button onclick="loadLogs()" class="flex items-center gap-2 px-3.5 py-2 bg-brand-600 hover:bg-brand-700 rounded-xl text-xs font-semibold text-white shadow-sm transition">
+              <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+              <span>รีเฟรช</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Log Filter Toolbar -->
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200/80 flex flex-col md:flex-row gap-3">
+          <div class="flex-1">
+            <input type="text" id="log-search-user" onchange="loadLogs()" placeholder="กรองตามชื่อผู้ใช้ (Username)..."
+              class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-brand-500">
+          </div>
+          <div class="flex-1">
+            <select id="log-filter-action" onchange="loadLogs()"
+              class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs bg-white focus:ring-2 focus:ring-brand-500">
+              <option value="">การกระทำทั้งหมด (All Actions)</option>
+              <option value="LOGIN">LOGIN (เข้าสู่ระบบ)</option>
+              <option value="UPLOAD">UPLOAD (อัปโหลดไฟล์)</option>
+              <option value="TRANSCRIBE">TRANSCRIBE (ถอดเสียง)</option>
+              <option value="DOWNLOAD">DOWNLOAD (ดาวน์โหลดเอกสาร)</option>
+              <option value="CREATE_USER">CREATE_USER (สร้างผู้ใช้)</option>
+              <option value="UPDATE_SETTINGS">UPDATE_SETTINGS (แก้การตั้งค่า)</option>
+              <option value="FILE_CLEANUP">FILE_CLEANUP (ล้างไฟล์ดิสก์)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Logs Table -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-200 text-left text-xs">
+              <thead class="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold">
+                <tr>
+                  <th class="py-3.5 px-4">วันและเวลา</th>
+                  <th class="py-3.5 px-4">ผู้กระทำ (User)</th>
+                  <th class="py-3.5 px-4">IP Address</th>
+                  <th class="py-3.5 px-4">กิจกรรม (Action)</th>
+                  <th class="py-3.5 px-4">รายละเอียด (Details)</th>
+                </tr>
+              </thead>
+              <tbody id="logs-tbody" class="divide-y divide-slate-100 font-mono text-slate-700">
+                <!-- Injected via JS -->
+              </tbody>
+            </table>
+          </div>
+          <div id="logs-empty" class="p-8 text-center text-slate-400 text-xs hidden">
+            ไม่พบบันทึกกิจกรรมตามเงื่อนไขที่เลือก
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ==========================================
+           TAB 5: USER MANAGEMENT (Admin Only)
+           ========================================== -->
+      <section id="tab-users" class="tab-pane p-6 lg:p-8 max-w-6xl mx-auto w-full space-y-6 hidden">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 class="text-2xl font-bold text-slate-900 tracking-tight">จัดการผู้ใช้งานในระบบ</h2>
+            <p class="text-sm text-slate-500 mt-1">เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่สามารถสร้างหรือแก้ไขบัญชีผู้ใช้งานได้</p>
+          </div>
+          <button onclick="openCreateUserModal()"
+            class="flex items-center gap-2 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold shadow-md shadow-brand-500/20 transition">
+            <i data-lucide="user-plus" class="w-4 h-4"></i>
+            <span>+ สร้างผู้ใช้งานใหม่</span>
+          </button>
+        </div>
+
+        <!-- Users Table -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-200 text-left text-xs">
+              <thead class="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold">
+                <tr>
+                  <th class="py-3.5 px-4">ID</th>
+                  <th class="py-3.5 px-4">ชื่อผู้ใช้ (Username)</th>
+                  <th class="py-3.5 px-4">ชื่อ-นามสกุล</th>
+                  <th class="py-3.5 px-4">บทบาท (Role)</th>
+                  <th class="py-3.5 px-4">สถานะ</th>
+                  <th class="py-3.5 px-4">เข้าใช้ล่าสุด</th>
+                  <th class="py-3.5 px-4 text-right">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="users-tbody" class="divide-y divide-slate-100 text-slate-700">
+                <!-- Injected via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ==========================================
+           TAB 6: SETTINGS & STORAGE (Admin Only)
+           ========================================== -->
+      <section id="tab-settings" class="tab-pane p-6 lg:p-8 max-w-4xl mx-auto w-full space-y-6 hidden">
+        <div>
+          <h2 class="text-2xl font-bold text-slate-900 tracking-tight">ตั้งค่าระบบ & การจัดเก็บไฟล์</h2>
+          <p class="text-sm text-slate-500 mt-1">กำหนดค่า ElevenLabs API Key, โมเดลเริ่มต้น และนโยบายล้างไฟล์เสียงชั่วคราว</p>
+        </div>
+
+        <!-- Card 1: ElevenLabs API Key -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200/80 space-y-4">
+          <div class="flex items-center gap-3">
+            <div class="p-2.5 rounded-xl bg-purple-50 text-purple-600">
+              <i data-lucide="key" class="w-6 h-6"></i>
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-slate-900">ElevenLabs Speech-to-Text API Key</h3>
+              <p class="text-xs text-slate-500">API Key สำหรับเรียกใช้งาน Scribe Speech-to-Text</p>
+            </div>
+          </div>
+
+          <div class="space-y-2 pt-2">
+            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider">API Key</label>
+            <div class="flex gap-2">
+              <input type="password" id="setting-api-key" placeholder="วาง ElevenLabs API Key (เช่น sk_...)"
+                class="flex-1 px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm font-mono focus:ring-2 focus:ring-brand-500">
+              <button type="button" onclick="testApiKey()" id="btn-test-key"
+                class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl border border-slate-300 transition">
+                ทดสอบการเชื่อมต่อ
+              </button>
+            </div>
+            <p class="text-xs text-slate-400">คีย์ปัจจุบัน: <span id="setting-masked-key" class="font-mono text-slate-600 font-bold">-</span></p>
+          </div>
+
+          <div id="test-key-result" class="hidden p-3 rounded-xl text-xs font-mono"></div>
+        </div>
+
+        <!-- Card 2: Storage Retention Policy & Free Up Disk -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200/80 space-y-5">
+          <div class="flex items-center gap-3">
+            <div class="p-2.5 rounded-xl bg-blue-50 text-blue-600">
+              <i data-lucide="hard-drive" class="w-6 h-6"></i>
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-slate-900">การจัดเก็บไฟล์ชั่วคราว (Storage & Retention)</h3>
+              <p class="text-xs text-slate-500">ระบบบริหารพื้นที่ดิสก์สำหรับไฟล์เสียงที่อัปโหลด</p>
+            </div>
+          </div>
+
+          <!-- Storage Statistics Badges -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+            <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+              <p class="text-[11px] text-slate-500 uppercase font-semibold">ไฟล์เสียงในระบบ</p>
+              <p class="text-lg font-bold text-slate-800 mt-1" id="stat-audio-count">0 ไฟล์</p>
+            </div>
+            <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+              <p class="text-[11px] text-slate-500 uppercase font-semibold">พื้นที่ไฟล์เสียง</p>
+              <p class="text-lg font-bold text-slate-800 mt-1" id="stat-audio-size">0 MB</p>
+            </div>
+            <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+              <p class="text-[11px] text-slate-500 uppercase font-semibold">ขนาดฐานข้อมูล (DB)</p>
+              <p class="text-lg font-bold text-slate-800 mt-1" id="stat-db-size">0 KB</p>
+            </div>
+            <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+              <p class="text-[11px] text-slate-500 uppercase font-semibold">พื้นที่ว่างในดิสก์</p>
+              <p class="text-lg font-bold text-emerald-600 mt-1" id="stat-disk-free">0 GB</p>
+            </div>
+          </div>
+
+          <!-- Storage Explanation Box (Answering User's Question directly!) -->
+          <div class="p-4 bg-blue-50/70 border border-blue-200 rounded-xl text-xs text-blue-900 space-y-2">
+            <p class="font-bold flex items-center gap-1.5 text-blue-950">
+              <i data-lucide="info" class="w-4 h-4 text-blue-600"></i>
+              ทำไมและต้องมีพื้นที่จัดเก็บอย่างไร?
+            </p>
+            <p class="leading-relaxed">
+              1. <b>ไฟล์เสียงต้นฉบับ</b>: เมื่ออัปโหลด (เช่นไฟล์ละ 50MB - 200MB) ระบบจะเก็บไว้ชั่วคราวเพื่อส่งให้ ElevenLabs และให้ผู้ใช้เปิดฟังในเว็บเพลเยอร์ได้<br/>
+              2. <b>ข้อความและผลการถอดเสียง</b>: ถูกจัดเก็บอย่างถาวรในฐานข้อมูล SQLite ซึ่งมีขนาดเล็กมาก (เพียงไม่กี่กิโลไบต์ต่อคลิป)<br/>
+              3. <b>ระบบทำความสะอาดอัตโนมัติ</b>: เมื่อไฟล์เสียงเก่าเกินเวลาที่ตั้งไว้ ระบบจะลบไฟล์เสียงทิ้งเพื่อคืนพื้นที่ฮาร์ดดิสก์ให้เซิร์ฟเวอร์ โดยบทถอดความ เอกสาร Word, PDF, Text ยังอยู่ครบถ้วน 100%!
+            </p>
+          </div>
+
+          <!-- Retention Policy Dropdown -->
+          <div class="space-y-2">
+            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider">นโยบายลบไฟล์เสียงเก่าอัตโนมัติ (Retention Policy)</label>
+            <select id="setting-retention-policy"
+              class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs bg-white focus:ring-2 focus:ring-brand-500">
+              <option value="keep_all">เก็บไฟล์เสียงไว้ตลอดไป (ไม่ลบอัตโนมัติ)</option>
+              <option value="1_day">ลบไฟล์เสียงเก่าอัตโนมัติหลัง 1 วัน (24 ชั่วโมง)</option>
+              <option value="3_days">ลบไฟล์เสียงเก่าอัตโนมัติหลัง 3 วัน</option>
+              <option value="7_days" selected>ลบไฟล์เสียงเก่าอัตโนมัติหลัง 7 วัน (แนะนำ)</option>
+              <option value="30_days">ลบไฟล์เสียงเก่าอัตโนมัติหลัง 30 วัน</option>
+              <option value="immediate">ลบไฟล์เสียงทันทีเมื่อถอดเสียงเสร็จ (ประหยัดพื้นที่ดิสก์สูงสุด)</option>
+            </select>
+          </div>
+
+          <!-- Manual Clean Button -->
+          <div class="pt-2 flex justify-between items-center border-t border-slate-100">
+            <button type="button" onclick="triggerCleanupNow()"
+              class="flex items-center gap-2 px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-xs font-bold border border-rose-200 transition">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+              <span>สั่งล้างไฟล์เสียงเก่าทันที (Clean Up Now)</span>
+            </button>
+            <button type="button" onclick="saveAllSettings()"
+              class="px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold shadow-md shadow-brand-500/20 transition">
+              บันทึกการตั้งค่าทั้งหมด
+            </button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+
+  <!-- ==========================================
+       MODAL: CREATE / EDIT USER
+       ========================================== -->
+  <div id="modal-user" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-5 border border-slate-200">
+      <div class="flex items-center justify-between">
+        <h3 class="text-lg font-bold text-slate-900" id="modal-user-title">สร้างผู้ใช้งานใหม่</h3>
+        <button onclick="closeUserModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="form-user" onsubmit="submitUserForm(event)" class="space-y-4">
+        <input type="hidden" id="modal-user-id">
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">ชื่อผู้ใช้ (Username)</label>
+          <input type="text" id="modal-user-username" required
+            class="w-full px-3.5 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-brand-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">ชื่อ-นามสกุล / ชื่อแสดง</label>
+          <input type="text" id="modal-user-fullname" required
+            class="w-full px-3.5 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-brand-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">รหัสผ่าน (Password)</label>
+          <input type="password" id="modal-user-password"
+            class="w-full px-3.5 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-brand-500"
+            placeholder="อย่างน้อย 6 ตัวอักษร">
+          <p class="text-[10px] text-slate-400 mt-1" id="modal-pwd-hint">เมื่อแก้ไขผู้ใช้เดิม หากไม่ต้องการเปลี่ยนให้เว้นว่างไว้</p>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">บทบาท (Role)</label>
+          <select id="modal-user-role" class="w-full px-3.5 py-2 border border-slate-300 rounded-xl text-xs bg-white focus:ring-2 focus:ring-brand-500">
+            <option value="user" selected>ผู้ใช้ทั่วไป (User - ถอดเสียงและดาวน์โหลดได้)</option>
+            <option value="admin">ผู้ดูแลระบบ (Admin - จัดการผู้ใช้, ดู Log, แก้ Setting)</option>
+          </select>
+        </div>
+
+        <div id="modal-user-active-group" class="hidden">
+          <label class="flex items-center gap-2 text-xs font-medium text-slate-700 cursor-pointer">
+            <input type="checkbox" id="modal-user-active" class="rounded text-brand-600 focus:ring-brand-500">
+            <span>เปิดใช้งานบัญชีนี้ (Active)</span>
+          </label>
+        </div>
+
+        <div class="pt-3 flex justify-end gap-2">
+          <button type="button" onclick="closeUserModal()" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-xl text-xs font-semibold hover:bg-slate-50 transition">
+            ยกเลิก
+          </button>
+          <button type="submit" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition">
+            บันทึก
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- ==========================================
+       TOAST CONTAINER
+       ========================================== -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 space-y-2 pointer-events-none"></div>
+
+  <!-- Application Logic -->
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  transcriptor:
+    build: .
+    container_name: transcriptor_app
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8000
+      - JWT_SECRET=change-this-jwt-secret-in-production-transcriptor
+      - DEFAULT_ADMIN_USERNAME=admin
+      - DEFAULT_ADMIN_PASSWORD=AdminPassword123!
+    volumes:
+      - ./data:/app/data
