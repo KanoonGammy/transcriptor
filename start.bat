@@ -18,7 +18,7 @@ echo [INFO] Installing/Checking requirements...
 pip install -r requirements.txt
 
 echo.
-if "%PORT%"=="" set PORT=8080
+if "%PORT%"=="" set PORT=16872
 if not "%~1"=="" set PORT=%~1
 
 echo [INFO] Starting Transcriptor Pro server on port %PORT%...

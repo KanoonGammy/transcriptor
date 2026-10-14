@@ -16,7 +16,7 @@ source .venv/bin/activate
 echo "[INFO] Installing requirements..."
 pip install -r requirements.txt
 
-PORT=${1:-${PORT:-8080}}
+PORT=${1:-${PORT:-16872}}
 
 echo ""
 echo "[INFO] Starting Transcriptor Pro server on port ${PORT}..."
