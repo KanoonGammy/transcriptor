@@ -24,7 +24,7 @@ def format_seconds(seconds: float) -> str:
 def test_api_key(api_key: str) -> Dict[str, Any]:
     """
     Test ElevenLabs API key validity.
-    Handles both full-access keys (via /v1/user) and scoped/fine-grained keys (via /v1/models).
+    Handles Full Access keys, Models-scoped keys, and Speech-to-Text-only keys.
     """
     if not api_key:
         return {"valid": False, "error": "API Key is empty"}
@@ -32,7 +32,7 @@ def test_api_key(api_key: str) -> Dict[str, Any]:
     headers = {"xi-api-key": api_key.strip()}
 
     try:
-        # Step 1: Try /v1/user to read subscription tier & quota
+        # Check 1: Try /v1/user for full quota details
         user_res = requests.get(f"{ELEVENLABS_BASE_URL}/user", headers=headers, timeout=10)
         if user_res.status_code == 200:
             data = user_res.json()
@@ -43,29 +43,55 @@ def test_api_key(api_key: str) -> Dict[str, Any]:
                 "character_count": sub.get("character_count", 0),
                 "character_limit": sub.get("character_limit", 0),
                 "status": sub.get("status", "active"),
-                "note": "Full Permissions"
+                "note": "Full Permissions (มีสิทธิ์ครบถ้วน)"
             }
 
-        # Step 2: If /v1/user returned 401 (e.g. missing 'user_read' scope),
-        # verify key validity against /v1/models endpoint
+        # Check 2: Try /v1/models
         models_res = requests.get(f"{ELEVENLABS_BASE_URL}/models", headers=headers, timeout=10)
         if models_res.status_code == 200:
             return {
                 "valid": True,
-                "tier": "Speech-to-Text Scoped",
+                "tier": "Models Access",
                 "character_count": 0,
                 "character_limit": 0,
                 "status": "active",
-                "note": "API Key ใช้งานได้สมบูรณ์ (คีย์นี้เปิดสิทธิ์สำหรับ Speech-to-Text เรียบร้อย พร้อมใช้งานทันที)"
+                "note": "API Key ใช้งานได้ (มีสิทธิ์ Models และ Speech-to-Text)"
             }
 
-        # Step 3: If both failed, return the exact error message
+        # Check 3: Check Speech-to-Text endpoint directly
+        stt_res = requests.post(
+            f"{ELEVENLABS_BASE_URL}/speech-to-text",
+            headers=headers,
+            data={"model_id": "scribe_v1"},
+            timeout=10
+        )
+        
+        # If response is 422 or 400 (missing file), authentication was successful!
+        if stt_res.status_code in (400, 422):
+            return {
+                "valid": True,
+                "tier": "Speech-to-Text Active",
+                "character_count": 0,
+                "character_limit": 0,
+                "status": "active",
+                "note": "API Key ผ่านการตรวจสอบสิทธิ์ Speech-to-Text สำเร็จ พร้อมใช้งานถอดเสียงได้ทันที"
+            }
+
+        # If it returned 401
         try:
-            err_json = models_res.json()
-            detail = err_json.get("detail", {}).get("message") or err_json.get("detail") or str(err_json)
+            err_data = stt_res.json()
+            err_detail = err_data.get("detail", {})
+            if isinstance(err_detail, dict):
+                msg = err_detail.get("message") or err_detail.get("status") or str(err_detail)
+            else:
+                msg = str(err_detail)
         except Exception:
-            detail = models_res.text or user_res.text
-        return {"valid": False, "error": f"API Error: {detail}"}
+            msg = stt_res.text or user_res.text
+
+        return {
+            "valid": False,
+            "error": f"{msg} (กรุณาตรวจสอบสิทธิ์ 'Speech to Text' หรือเลือก 'Full Access' ใน ElevenLabs)"
+        }
 
     except requests.exceptions.RequestException as e:
         return {"valid": False, "error": f"Connection failed: {str(e)}"}
