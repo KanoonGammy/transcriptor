@@ -16,8 +16,10 @@ source .venv/bin/activate
 echo "[INFO] Installing requirements..."
 pip install -r requirements.txt
 
+PORT=${1:-${PORT:-8080}}
+
 echo ""
-echo "[INFO] Starting Transcriptor Pro server..."
-echo "[INFO] Open your browser at: http://localhost:8000"
+echo "[INFO] Starting Transcriptor Pro server on port ${PORT}..."
+echo "[INFO] Open your browser at: http://localhost:${PORT}"
 echo ""
-python main.py
+python main.py --port ${PORT}

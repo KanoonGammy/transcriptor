@@ -113,5 +113,11 @@ def health_check():
 
 if __name__ == "__main__":
     import uvicorn
-    logger.info("Starting Transcriptor Pro on http://%s:%s", HOST, PORT)
-    uvicorn.run("main:app", host=HOST, port=PORT, reload=True)
+    import argparse
+    parser = argparse.ArgumentParser(description="Transcriptor Pro")
+    parser.add_argument("--port", "-p", type=int, default=PORT, help=f"Port to run the server on (default: {PORT})")
+    parser.add_argument("--host", type=str, default=HOST, help=f"Host to bind to (default: {HOST})")
+    args = parser.parse_args()
+
+    logger.info("Starting Transcriptor Pro on http://%s:%s", args.host, args.port)
+    uvicorn.run("main:app", host=args.host, port=args.port, reload=True)

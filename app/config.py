@@ -20,7 +20,7 @@ FONTS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Server config
 HOST = os.getenv("HOST", "0.0.0.0")
-PORT = int(os.getenv("PORT", "8000"))
+PORT = int(os.getenv("PORT", "8080"))
 
 # Security
 JWT_SECRET = os.getenv("JWT_SECRET", "super-secret-key-change-this-in-production-1234567890")

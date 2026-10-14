@@ -18,8 +18,11 @@ echo [INFO] Installing/Checking requirements...
 pip install -r requirements.txt
 
 echo.
-echo [INFO] Starting Transcriptor Pro server...
-echo [INFO] Open your browser at: http://localhost:8000
+if "%PORT%"=="" set PORT=8080
+if not "%~1"=="" set PORT=%~1
+
+echo [INFO] Starting Transcriptor Pro server on port %PORT%...
+echo [INFO] Open your browser at: http://localhost:%PORT%
 echo.
-python main.py
+python main.py --port %PORT%
 pause
